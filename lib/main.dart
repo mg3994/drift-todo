@@ -22,9 +22,12 @@ class MyApp extends StatelessWidget {
     routes: [
       GoRoute(
         path: '/',
-        builder: (_, __) => const HomePage(),
+        builder: (context, state) => const HomePage(),
         routes: [
-          GoRoute(path: 'search', builder: (_, __) => const SearchPage()),
+          GoRoute(
+            path: 'search',
+            builder: (context, state) => const SearchPage(),
+          ),
         ],
       ),
     ],

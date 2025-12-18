@@ -19,3 +19,15 @@ Future<void> validateDatabaseSchema(GeneratedDatabase database) async {
     await VerifySelf(database).validateDatabaseSchema(sqlite3: sqlite);
   }
 }
+
+abstract class PlatformImplementation {
+  static Future<void> backup(GeneratedDatabase db) async {
+    // Web backups are not supported in this simple way.
+  }
+
+  static Future<void> restore(GeneratedDatabase db) async {
+    // Web restores are not supported in this simple way.
+  }
+
+  static Future<String?> get databasePath async => null;
+}

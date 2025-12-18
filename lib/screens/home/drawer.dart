@@ -165,7 +165,7 @@ class _CategoryDrawerEntryState extends State<_CategoryDrawerEntry> {
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Material(
         color: isActive
-            ? Colors.orangeAccent.withOpacity(0.3)
+            ? Colors.orangeAccent.withValues(alpha: 0.3)
             : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
