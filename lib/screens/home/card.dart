@@ -1,6 +1,5 @@
 import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../database/database.dart';
@@ -9,13 +8,13 @@ import 'todo_edit_dialog.dart';
 final DateFormat _format = DateFormat.yMMMd();
 
 /// Card that displays an entry and an icon button to delete that entry
-class TodoCard extends ConsumerWidget {
+class TodoCard extends StatelessWidget {
   final TodoEntry entry;
 
   TodoCard(this.entry) : super(key: ObjectKey(entry.id));
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final dueDate = entry.dueDate;
 
     return Card(
@@ -58,12 +57,9 @@ class TodoCard extends ConsumerWidget {
               icon: const Icon(Icons.delete),
               color: Colors.red,
               onPressed: () {
-                // We delete the entry here. Again, notice how we don't have to
-                // call setState() or inform the parent widget. Drift will take
-                // care of updating the underlying data automatically
-                ref.read(AppDatabase.provider).todoEntries.deleteOne(entry);
+                AppDatabase.provider.value.todoEntries.deleteOne(entry);
               },
-            )
+            ),
           ],
         ),
       ),

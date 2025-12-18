@@ -1,22 +1,21 @@
 import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../database/database.dart';
 
 final _dateFormat = DateFormat.yMMMd();
 
-class TodoEditDialog extends ConsumerStatefulWidget {
+class TodoEditDialog extends StatefulWidget {
   final TodoEntry entry;
 
   const TodoEditDialog({super.key, required this.entry});
 
   @override
-  ConsumerState<TodoEditDialog> createState() => _TodoEditDialogState();
+  State<TodoEditDialog> createState() => _TodoEditDialogState();
 }
 
-class _TodoEditDialogState extends ConsumerState<TodoEditDialog> {
+class _TodoEditDialogState extends State<TodoEditDialog> {
   final TextEditingController textController = TextEditingController();
   DateTime? _dueDate;
 
@@ -61,8 +60,9 @@ class _TodoEditDialogState extends ConsumerState<TodoEditDialog> {
                 onPressed: () async {
                   final now = DateTime.now();
                   final initialDate = _dueDate ?? now;
-                  final firstDate =
-                      initialDate.isBefore(now) ? initialDate : now;
+                  final firstDate = initialDate.isBefore(now)
+                      ? initialDate
+                      : now;
 
                   final selectedDate = await showDatePicker(
                     context: context,
@@ -96,7 +96,7 @@ class _TodoEditDialogState extends ConsumerState<TodoEditDialog> {
               dueDate: Value(_dueDate),
             );
 
-            ref.read(AppDatabase.provider).todoEntries.replaceOne(entry);
+            AppDatabase.provider.value.todoEntries.replaceOne(entry);
             Navigator.pop(context);
           },
         ),

@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:signals/signals.dart';
 
 import '../database/database.dart';
 import 'backup/backup.dart';
@@ -9,33 +9,43 @@ import 'home/card.dart';
 import 'home/drawer.dart';
 import 'home/state.dart';
 
-class HomePage extends ConsumerStatefulWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
-  ConsumerState<HomePage> createState() => _HomePageState();
+  State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends ConsumerState<HomePage> {
+class _HomePageState extends State<HomePage> {
   final _controller = TextEditingController();
+  late final void Function() _disposeSignal;
+
+  @override
+  void initState() {
+    super.initState();
+    _disposeSignal = entriesInCategory.subscribe((_) {
+      if (mounted) setState(() {});
+    });
+  }
 
   @override
   void dispose() {
     _controller.dispose();
+    _disposeSignal();
     super.dispose();
   }
 
   void _addTodoEntry() {
     if (_controller.text.isNotEmpty) {
-      // We write the entry here. Notice how we don't have to call setState()
-      // or anything - drift will take care of updating the list automatically.
-      final database = ref.read(AppDatabase.provider);
-      final currentCategory = ref.read(activeCategory);
+      final database = AppDatabase.provider.value;
+      final currentCategory = activeCategory.value;
 
-      database.todoEntries.insertOne(TodoEntriesCompanion.insert(
-        description: _controller.text,
-        category: Value(currentCategory?.id),
-      ));
+      database.todoEntries.insertOne(
+        TodoEntriesCompanion.insert(
+          description: _controller.text,
+          category: Value(currentCategory?.id),
+        ),
+      );
 
       _controller.clear();
     }
@@ -43,8 +53,6 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final currentEntries = ref.watch(entriesInCategory);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Drift Todo list'),
@@ -58,24 +66,22 @@ class _HomePageState extends ConsumerState<HomePage> {
         ],
       ),
       drawer: const CategoriesDrawer(),
-      body: currentEntries.when(
-        data: (entries) {
-          return ListView.builder(
-            itemCount: entries.length,
-            itemBuilder: (context, index) {
-              return TodoCard(entries[index].entry);
-            },
-          );
-        },
-        error: (e, s) {
+      body: switch (entriesInCategory.value) {
+        AsyncData(value: final entries) => ListView.builder(
+          itemCount: entries.length,
+          itemBuilder: (context, index) {
+            return TodoCard(entries[index].entry);
+          },
+        ),
+        AsyncError(error: final e, stackTrace: final s) => () {
           debugPrintStack(label: e.toString(), stackTrace: s);
           return const Text('An error has occured');
-        },
-        loading: () => const Align(
+        }(),
+        AsyncLoading() => const Align(
           alignment: Alignment.center,
           child: CircularProgressIndicator(),
         ),
-      ),
+      },
       bottomSheet: Material(
         elevation: 12,
         child: SafeArea(

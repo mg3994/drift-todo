@@ -1,13 +1,11 @@
-import 'package:riverpod/riverpod.dart';
-
+import 'package:signals/signals.dart';
 
 import '../../database/database.dart';
 
-final activeCategory = StateProvider<Category?>((_) => null);
+final activeCategory = signal<Category?>(null);
 
-final entriesInCategory = StreamProvider((ref) {
-  final database = ref.watch(AppDatabase.provider);
-  final current = ref.watch(activeCategory)?.id;
-
+final entriesInCategory = streamSignal(() {
+  final database = AppDatabase.provider.value;
+  final current = activeCategory.value?.id;
   return database.entriesInCategory(current);
 });

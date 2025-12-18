@@ -1,14 +1,12 @@
 import 'dart:io';
 
-import 'package:findhere/database/connection/native.dart';
-import 'package:findhere/database/database.dart';
-import 'package:drift/drift.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/sqlite3.dart';
+
+import '../../database/database.dart';
 
 class BackupIcon extends StatelessWidget {
   const BackupIcon({super.key});
@@ -24,11 +22,11 @@ class BackupIcon extends StatelessWidget {
   }
 }
 
-class BackupDialog extends ConsumerWidget {
+class BackupDialog extends StatelessWidget {
   const BackupDialog({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Database backup'),
       content: const Text(
@@ -38,13 +36,13 @@ class BackupDialog extends ConsumerWidget {
       actions: [
         TextButton(
           onPressed: () {
-            createDatabaseBackup(ref.read(AppDatabase.provider));
+            createDatabaseBackup(AppDatabase.provider.value);
           },
           child: const Text('Save'),
         ),
         TextButton(
           onPressed: () async {
-            final db = ref.read(AppDatabase.provider);
+            final db = AppDatabase.provider.value;
             await db.close();
 
             // Open the selected database file
@@ -64,8 +62,12 @@ class BackupDialog extends ConsumerWidget {
             await tempDbFile.copy((await databaseFile).path);
             await tempDbFile.delete();
 
-            // And now, re-open the database!
-            ref.read(AppDatabase.provider.notifier).state = AppDatabase();
+            // And finally, re-open the database
+            AppDatabase.provider.value = AppDatabase();
+
+            if (context.mounted) {
+              Navigator.pop(context);
+            }
           },
           child: const Text('Restore'),
         ),
@@ -74,21 +76,40 @@ class BackupDialog extends ConsumerWidget {
   }
 }
 
-Future<void> createDatabaseBackup(DatabaseConnectionUser database) async {
-  final choosenDirectory = await FilePicker.platform.getDirectoryPath();
-  if (choosenDirectory == null) return;
+class Supported extends StatelessWidget {
+  const Supported({super.key});
 
-  final parent = Directory(choosenDirectory);
-  final file = File(p.join(choosenDirectory, 'drift_example_backup.db'));
-
-  // Make sure the directory of the file exists
-  if (!await parent.exists()) {
-    await parent.create(recursive: true);
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        ElevatedButton(
+          onPressed: () async {
+            final db = AppDatabase.provider.value;
+            await db.backup();
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Backup saved successfully')),
+              );
+            }
+          },
+          child: const Text('Backup Database'),
+        ),
+        ElevatedButton(
+          onPressed: () async {
+            final db = AppDatabase.provider.value;
+            await db.restore();
+            // Re-initialize the database state to reflect changes
+            AppDatabase.provider.value = AppDatabase();
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Database restored successfully')),
+              );
+            }
+          },
+          child: const Text('Restore Database'),
+        ),
+      ],
+    );
   }
-  // However, the file itself must not exist
-  if (await file.exists()) {
-    await file.delete();
-  }
-
-  await database.customStatement('VACUUM INTO ?', [file.absolute.path]);
 }

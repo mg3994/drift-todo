@@ -1,16 +1,15 @@
 import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../database/database.dart';
 import 'state.dart';
 
-class CategoriesDrawer extends ConsumerWidget {
+class CategoriesDrawer extends StatelessWidget {
   const CategoriesDrawer({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return Drawer(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -27,7 +26,7 @@ class CategoriesDrawer extends ConsumerWidget {
           ),
           Flexible(
             child: StreamBuilder<List<CategoryWithCount>>(
-              stream: ref.watch(AppDatabase.provider).categoriesWithCount(),
+              stream: AppDatabase.provider.value.categoriesWithCount(),
               builder: (context, snapshot) {
                 final categories = snapshot.data ?? <CategoryWithCount>[];
 
@@ -46,15 +45,38 @@ class CategoriesDrawer extends ConsumerWidget {
   }
 }
 
-class _CategoryDrawerEntry extends ConsumerWidget {
+class _CategoryDrawerEntry extends StatefulWidget {
   final CategoryWithCount entry;
 
   const _CategoryDrawerEntry({required this.entry});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  State<_CategoryDrawerEntry> createState() => _CategoryDrawerEntryState();
+}
+
+class _CategoryDrawerEntryState extends State<_CategoryDrawerEntry> {
+  late final void Function() _disposeSignal;
+
+  @override
+  void initState() {
+    super.initState();
+    _disposeSignal = activeCategory.subscribe((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _disposeSignal();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final entry = widget.entry;
     final category = entry.category;
-    final isActive = ref.watch(activeCategory)?.id == category?.id;
+    final activeCat = activeCategory.value;
+    final isActive = activeCat?.id == category?.id;
 
     String title;
     if (category == null) {
@@ -71,10 +93,7 @@ class _CategoryDrawerEntry extends ConsumerWidget {
             onTap: () async {
               final newColor = await _selectColor(context, category.color);
               if (newColor != null) {
-                final update = ref
-                    .read(AppDatabase.provider)
-                    .categories
-                    .update()
+                final update = AppDatabase.provider.value.categories.update()
                   ..whereSamePrimaryKey(category);
                 await update.write(CategoriesCompanion(color: Value(newColor)));
               }
@@ -102,7 +121,6 @@ class _CategoryDrawerEntry extends ConsumerWidget {
       ),
     ];
 
-    // also show a delete button if the category can be deleted
     if (category != null) {
       rowContent.addAll([
         const Spacer(),
@@ -135,9 +153,8 @@ class _CategoryDrawerEntry extends ConsumerWidget {
               },
             );
 
-            // can be null when the dialog is dismissed
             if (confirmed == true) {
-              ref.read(AppDatabase.provider).deleteCategory(category);
+              AppDatabase.provider.value.deleteCategory(category);
             }
           },
         ),
@@ -148,14 +165,13 @@ class _CategoryDrawerEntry extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Material(
         color: isActive
-            // ignore: deprecated_member_use
             ? Colors.orangeAccent.withOpacity(0.3)
             : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: () {
-            ref.read(activeCategory.notifier).state = category;
-            Navigator.pop(context); // close the navigation drawer
+            activeCategory.value = category;
+            Navigator.pop(context);
           },
           child: Padding(
             padding: const EdgeInsets.all(8),
@@ -180,25 +196,6 @@ Future<Color?> _selectColor(BuildContext context, Color initial) {
             pickerColor: initial,
             onColorChanged: (color) => Navigator.pop(context, color),
           ),
-          // Use Material color picker:
-          //
-          // child: MaterialPicker(
-          //   pickerColor: pickerColor,
-          //   onColorChanged: changeColor,
-          //   showLabel: true, // only on portrait mode
-          // ),
-          //
-          // Use Block color picker:
-          //
-          // child: BlockPicker(
-          //   pickerColor: currentColor,
-          //   onColorChanged: changeColor,
-          // ),
-          //
-          // child: MultipleChoiceBlockPicker(
-          //   pickerColors: currentColors,
-          //   onColorsChanged: changeColors,
-          // ),
         ),
       );
     },

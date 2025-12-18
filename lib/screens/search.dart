@@ -1,33 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../database/database.dart';
-import 'home/card.dart';
 
-class SearchPage extends ConsumerStatefulWidget {
+class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
 
   @override
-  ConsumerState<SearchPage> createState() => _SearchPageState();
+  State<SearchPage> createState() => _SearchPageState();
 }
 
-class _SearchPageState extends ConsumerState<SearchPage> {
-  final TextEditingController _controller = TextEditingController();
-  String _text = '';
+class _SearchPageState extends State<SearchPage> {
+  final _controller = TextEditingController();
   Future<List<TodoEntryWithCategory>>? _search;
-
-  @override
-  void initState() {
-    _controller.addListener(() {
-      setState(() {
-        if (_text != _controller.text && _controller.text.isNotEmpty) {
-          _text = _controller.text;
-          _search = ref.read(AppDatabase.provider).search(_text);
-        }
-      });
-    });
-    super.initState();
-  }
+  String? _text;
 
   @override
   void dispose() {
@@ -40,35 +25,41 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     return Scaffold(
       appBar: AppBar(
         title: TextField(
-          decoration: const InputDecoration(
-            hintText: 'Search for todos across all categories',
-          ),
-          textInputAction: TextInputAction.search,
           controller: _controller,
+          autofocus: true,
+          onChanged: (_) {
+            setState(() {
+              if (_text != _controller.text && _controller.text.isNotEmpty) {
+                _text = _controller.text;
+                _search = AppDatabase.provider.value.search(_text!);
+              }
+            });
+          },
+          decoration: const InputDecoration(
+            hintText: 'Search...',
+            border: InputBorder.none,
+          ),
         ),
       ),
-      body: _search == null
-          ? const Align(
-              alignment: Alignment.center,
-              child: Text('Enter text to start searching'),
-            )
-          : FutureBuilder<List<TodoEntryWithCategory>>(
-              future: _search,
-              builder: (context, snapshot) {
-                if (snapshot.hasData) {
-                  final results = snapshot.data!;
+      body: FutureBuilder<List<TodoEntryWithCategory>>(
+        future: _search,
+        builder: (context, snapshot) {
+          final entries = snapshot.data;
 
-                  return ListView.builder(
-                    itemCount: results.length,
-                    itemBuilder: (context, index) {
-                      return TodoCard(results[index].entry);
-                    },
-                  );
-                } else {
-                  return const CircularProgressIndicator();
-                }
+          if (entries == null) {
+            return const Center(child: Text('Enter a search query'));
+          } else {
+            return ListView.builder(
+              itemCount: entries.length,
+              itemBuilder: (context, index) {
+                return ListTile(
+                  title: Text(entries[index].entry.description),
+                );
               },
-            ),
+            );
+          }
+        },
+      ),
     );
   }
 }
